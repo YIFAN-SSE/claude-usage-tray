@@ -276,7 +276,7 @@ def open_settings():
     w = {k: THEMES[ti][k] for k in ("bg", "card", "fg", "dim")}
     w["lv"] = list(THEMES[ti]["lv"])
     win = tk.Toplevel(root)
-    win.title("Claude usage - colors")
+    win.title("Burn Rate - colors")
     win.attributes("-topmost", True)
     win.resizable(False, False)
     frm = tk.Frame(win, padx=14, pady=12)
@@ -378,7 +378,7 @@ def draw():
     ranked = sorted(v for v in data.values() if v > 0) or [1]
     cv.delete("all")
     cells.clear()
-    cv.create_text(PAD, 28, text="Claude usage", anchor="w", fill=FG, font=F_TITLE, tags="title")
+    cv.create_text(PAD, 28, text="Burn Rate", anchor="w", fill=FG, font=F_TITLE, tags="title")
     cv.create_text(W - PAD, 28, text=f"{datetime.now():%H:%M}", anchor="e", fill=DIM, font=F_LAB)
     cv.tag_bind("title", "<Double-Button-1>", next_theme)
     rrect(cv, W - PAD - 108, 16, 52, 24, 12, fill=CARD, outline="", tags="mode")
@@ -420,7 +420,7 @@ def draw():
         x -= 17
     cv.create_text(x + 2, fy, text="Less", anchor="e", fill=DIM, font=F_LAB)
     if icon:
-        icon.title = f"Claude usage - today {show(data.get(today, 0))}, 7d {show(wk)}"
+        icon.title = f"Burn Rate - today {show(data.get(today, 0))}, 7d {show(wk)}"
 
 
 def tick():
@@ -429,7 +429,7 @@ def tick():
 
 
 root.withdraw()
-icon = pystray.Icon("claude-usage", tray_image(), "Claude usage", pystray.Menu(
+icon = pystray.Icon("claude-usage", tray_image(), "Burn Rate", pystray.Menu(
     pystray.MenuItem("Show / hide", lambda: events.put("toggle"), default=True),
     pystray.MenuItem("Colors...", lambda: events.put("colors")),
     pystray.MenuItem("Quit", lambda: events.put("quit"))))

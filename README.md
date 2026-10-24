@@ -1,4 +1,4 @@
-# Claude usage tray
+# Burn Rate (claude-usage-tray)
 
 A small Windows tray app that shows your **Claude Code usage as a heatmap**, with totals in
 **API-equivalent US dollars** or **tokens** (click the pill to switch). Left-click the tray icon to
