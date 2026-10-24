@@ -1,0 +1,4 @@
+# per-user settings written by the app
+.claude_usage_tray_theme
+.claude_usage_tray_mode
+__pycache__/
