@@ -1,6 +1,6 @@
 # Burn Rate (claude-usage-tray)
 
-A small Windows tray app that shows your **Claude Code usage as a heatmap**, with totals in
+A small Windows tray app that shows your **Claude Code (and optionally Codex CLI) usage as a heatmap**, with totals in
 **API-equivalent US dollars** or **tokens** (click the pill to switch). Left-click the tray icon to
 open the popup, click anywhere else to close it.
 
@@ -15,7 +15,7 @@ pip install -r requirements.txt
 pythonw claude_usage_tray.pyw      # or: python claude_usage_tray.pyw
 ```
 
-Windows 10/11 only (it uses the Win32 tray and DWM APIs). Python 3.9+.
+Windows 10/11 only (it uses the Win32 tray and DWM APIs). Developed and tested on Python 3.13; other versions are untested.
 The icon may land in the tray overflow (`^`); drag it onto the taskbar to keep it visible.
 
 ## What the token numbers include
@@ -25,10 +25,10 @@ The icon may land in the tray overflow (`^`); drag it onto the taskbar to keep i
 | Counted | Not counted |
 |---|---|
 | fresh input tokens | anything that left no local log: claude.ai chats, the desktop chat app, API calls from your own code |
-| output tokens (thinking is part of output) | sessions whose log files were deleted (Claude Code purges old logs; see below) |
+| output tokens (thinking is part of output) | sessions whose log files were deleted (Claude Code may purge old logs; see Notes) |
 | cache writes (5 min and 1 h) | usage from other computers |
 | cache reads | tool fees such as web search, and any billing adjustments |
-| sub-agent replies stored in the same logs | tokens of replies that were never written to the log (interrupted mid-stream) |
+| every `.jsonl` under `~/.claude/projects`, including subfolders | tokens of replies that were never written to the log (interrupted mid-stream) |
 
 **Codex (OpenAI Codex CLI logs)** - input tokens (the cached part is already inside this figure) plus output
 tokens (reasoning is part of output), taken as the growth of each session's running total.
@@ -41,18 +41,16 @@ dollar figure is far smaller than the token figure suggests.
 
 ## Notes
 
-- **Codex prices** are in the `CODEX_PRICE` table (input / cached input / output, $ per 1M tokens), copied
-  from public third-party pages that disagree in places, so treat them as rough. `gpt-5.6-sol` uses a
-  promotional rate. Models missing from the table count as $0. Long-context surcharges are ignored.
-- Codex `input_tokens` already includes cached tokens; the app prices the cached part at the cached rate.
-- Only usage that leaves a local log is counted: editor plugins of Claude Code and the Codex CLI, yes;
-  direct API calls from your own code, claude.ai chats and the desktop chat app, no.
-
 - **Dollar figures are list-price equivalents, not what you were billed.** Subscription users pay a
-  flat fee. Prices live in the `PRICE` table near the top of the script; edit it when prices change.
-  Cache writes are priced at 1.25x input (5 min) or 2x (1 h). Unknown models count as $0.
-- Claude Code deletes old session logs after a while (default 30 days), so the heatmap only reaches
-  back as far as the logs on disk. Raise `cleanupPeriodDays` in `~/.claude/settings.json` to keep more.
+  flat fee. Prices live in the `PRICE` table (Claude) and `CODEX_PRICE` table (Codex) near the top of the
+  script; edit them when prices change. Claude cache writes are priced at 1.25x input (5 min) or 2x (1 h).
+  Models missing from a table count as $0.
+- **Codex prices are rough.** They were copied from public third-party pages that disagree in places, not
+  from an official price list, and `gpt-5.6-sol` uses a promotional rate. Long-context surcharges (reported
+  for requests above roughly 272K tokens) are ignored. Check them before trusting the Codex dollar figure.
+- Codex `input_tokens` already includes cached tokens; the app prices the cached part at the cached rate.
+- Claude Code may delete old session logs after a while (reportedly 30 days by default), so the heatmap only
+  reaches back as far as the logs on disk. Raising `cleanupPeriodDays` in `~/.claude/settings.json` keeps more.
 - Double-click the title to cycle colour themes, or tray menu > **Colors...** to set every colour yourself.
   Theme, custom colours, USD/tokens and source are saved in `claude_usage_tray.json` next to the script.
 - `--show` opens the popup on start.
