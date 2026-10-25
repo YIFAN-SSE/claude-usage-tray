@@ -192,7 +192,8 @@ PAD, LEFT, HEAD, CARD_H = 20, 36, 54, 78
 F_TITLE, F_LAB, F_NUM, F_UNIT = (FONT, 13, "bold"), (FONT, 10), (FONT, 17, "bold"), (FONT, 11)
 W = PAD * 2 + LEFT + WEEKS * (CELL + GAP) - GAP
 CARD_W = (W - PAD * 2 - 10 * 2) / 3
-GRID_Y = HEAD + CARD_H + 40  # header + cards + room for month labels
+ACTIVE_H = 40  # the "active days" strip under the cards
+GRID_Y = HEAD + CARD_H + ACTIVE_H + 40  # header + cards + strip + room for month labels
 H = GRID_Y + 7 * (CELL + GAP) - GAP + 44
 
 root = tk.Tk()
@@ -393,6 +394,13 @@ def draw():
         x = PAD + i * (CARD_W + 10)
         rrect(cv, x, HEAD, CARD_W, CARD_H, 12, fill=CARD, outline="")
         stat(x, HEAD, lab, val)
+    active = sum(1 for i in range(30) if tok.get(today - timedelta(days=i), 0) > 0)  # days with any usage, last 30
+    ay = HEAD + CARD_H + 16
+    cv.create_text(PAD, ay, text="ACTIVE DAYS \u00b7 LAST 30", anchor="w", fill=DIM, font=F_LAB)
+    cv.create_text(W - PAD, ay, text=f"{active} / 30", anchor="e", fill=FG, font=(FONT, 11, "bold"))
+    rrect(cv, PAD, ay + 17, W - PAD * 2, 6, 3, fill=LEVELS[0], outline="")
+    if active:
+        rrect(cv, PAD, ay + 17, max(6, (W - PAD * 2) * active / 30), 6, 3, fill=LEVELS[4], outline="")
     for r, lab in ((1, "Mon"), (3, "Wed"), (5, "Fri")):
         cv.create_text(PAD, GRID_Y + r * (CELL + GAP) + CELL / 2, text=lab, anchor="w", fill=DIM, font=F_LAB)
     last_month, last_col = None, -9

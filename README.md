@@ -53,11 +53,12 @@ dollar figure is far smaller than the token figure suggests.
   reaches back as far as the logs on disk. Raising `cleanupPeriodDays` in `~/.claude/settings.json` keeps more.
 - Double-click the title to cycle colour themes, or tray menu > **Colors...** to set every colour yourself.
   Theme, custom colours, USD/tokens and source are saved in `claude_usage_tray.json` next to the script.
+- **Active days:** the strip under the cards counts how many of the last 30 days had any usage in the selected source.
 - `--show` opens the popup on start.
 
 ## 中文说明
 
-Windows 托盘小工具：用热力图显示你的 Claude Code（可选 Codex）用量，可在"等价美元"和"token"之间切换，来源可选 Claude / Codex / 合计（点右上角小标签），配色可在托盘菜单 Colors... 里自由设置。
+Windows 托盘小工具：用热力图显示你的 Claude Code（可选 Codex）用量，可在"等价美元"和"token"之间切换，来源可选 Claude / Codex / 合计（点右上角小标签），显示最近 30 天的活跃天数，配色可在托盘菜单 Colors... 里自由设置。
 左键点托盘图标弹出，点别处收起。数据全部在本地从 `~/.claude/projects` 的会话记录计算，不联网。
 美元是按 API 标价折算的等价金额，不是实际账单。
 
