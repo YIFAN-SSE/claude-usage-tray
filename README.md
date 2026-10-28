@@ -48,6 +48,11 @@ dollar figure is far smaller than the token figure suggests.
 - **Codex prices are rough.** They were copied from public third-party pages that disagree in places, not
   from an official price list, and `gpt-5.6-sol` uses a promotional rate. Long-context surcharges (reported
   for requests above roughly 272K tokens) are ignored. Check them before trusting the Codex dollar figure.
+- **Codex history can be partly estimated.** Newer Codex versions migrate old session logs into a local sqlite
+  database and delete the `.jsonl` files, keeping only a token total per thread. For threads whose log is gone,
+  the app spreads that total over the days the thread had turns. The totals are real; the per-day split and the
+  dollar figure are estimates (the dollar figure assumes about 0.5% output and 94% cached input, measured on
+  intact logs). Only threads that still have a log file use exact numbers.
 - Codex `input_tokens` already includes cached tokens; the app prices the cached part at the cached rate.
 - Claude Code may delete old session logs after a while (reportedly 30 days by default), so the heatmap only
   reaches back as far as the logs on disk. Raising `cleanupPeriodDays` in `~/.claude/settings.json` keeps more.

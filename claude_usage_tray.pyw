@@ -1,7 +1,8 @@
 """Claude Code usage heatmap in the Windows tray. Left-click the icon to show/hide the popup.
 Reads ~/.claude/projects/**/*.jsonl."""
-import json, glob, os, queue, re, socket, subprocess, sys, time, tkinter as tk
+import json, glob, os, queue, re, shutil, socket, sqlite3, subprocess, sys, tempfile, time, tkinter as tk
 from tkinter import font as tkfont
+from collections import Counter
 from datetime import date, datetime, timedelta
 import pystray
 from PIL import Image, ImageDraw
@@ -114,6 +115,57 @@ def scan_codex(path):  # -> [(day, tokens, usd)]; per-call deltas of the session
     return out
 
 
+CODEX_HOME = os.path.expanduser("~/.codex")
+EST_OUT, EST_CACHED = 0.005, 0.94  # output share and cached share of input, measured on intact Codex logs
+_tmp = tempfile.mkdtemp(prefix="burnrate_")
+_est = {"key": None, "rows": [], "tokens": 0.0}
+
+
+def _local_day(v):  # seconds or milliseconds since epoch -> local date
+    v = float(v)
+    return datetime.fromtimestamp(v / 1000 if v > 1e12 else v).date()
+
+
+def codex_estimate():
+    """Newer Codex versions migrate old session logs into sqlite and delete the .jsonl files, which keeps only
+    a per-thread token total. For threads whose log is gone, spread that total over the days the thread had
+    turns. Totals are real; the per-day split and the dollar figure are estimates."""
+    names = ("state_5.sqlite", "thread_history_1.sqlite")
+    files = [os.path.join(CODEX_HOME, n + e) for n in names for e in ("", "-wal")]
+    key = tuple(os.path.getmtime(f) if os.path.exists(f) else 0 for f in files)
+    if key == _est["key"]:
+        return _est["rows"]
+    rows, total = [], 0.0
+    try:
+        for n in names:
+            for e in ("", "-wal", "-shm"):
+                if os.path.exists(os.path.join(CODEX_HOME, n + e)):
+                    shutil.copy(os.path.join(CODEX_HOME, n + e), os.path.join(_tmp, n + e))
+        st = sqlite3.connect(f"file:{_tmp}/state_5.sqlite?mode=ro", uri=True)
+        hist = sqlite3.connect(f"file:{_tmp}/thread_history_1.sqlite?mode=ro", uri=True)
+        for tid, path, used, upd, model in st.execute(
+                "select id, rollout_path, tokens_used, updated_at, model from threads where tokens_used > 0"):
+            if path and os.path.exists(path):
+                continue  # its log is still there, so the exact numbers are used instead
+            turns = Counter(_local_day(t) for (t,) in hist.execute(
+                "select started_at from thread_turns where thread_id = ? and started_at is not null", (tid,)))
+            if not turns:
+                turns[_local_day(upd)] = 1
+            n = sum(turns.values())
+            i, c, o = CODEX_PRICE.get(model, (0, 0, 0))
+            for day, k in turns.items():
+                tok = used * k / n
+                out = tok * EST_OUT
+                inp = tok - out
+                cached = inp * EST_CACHED
+                rows.append((day, tok, ((inp - cached) * i + cached * c + out * o) / 1e6))
+                total += tok
+    except (sqlite3.Error, OSError, ValueError, TypeError):
+        rows, total = [], 0.0  # unreadable or a different layout: fall back to exact logs only
+    _est.update(key=key, rows=rows, tokens=total)
+    return rows
+
+
 def daily():  # -> ({day: tokens}, {day: usd}) for the selected source
     seen, tot, usd = {}, {}, {}
     if source in ("claude", "both"):
@@ -134,6 +186,7 @@ def daily():  # -> ({day: tokens}, {day: usd}) for the selected source
                 if _cache.get(p, (None,))[0] != key:
                     _cache[p] = (key, scan_codex(p))
                 rows += _cache[p][1]
+        rows += codex_estimate()
     for day, n, c in rows:
         tot[day] = tot.get(day, 0) + n
         usd[day] = usd.get(day, 0) + c
