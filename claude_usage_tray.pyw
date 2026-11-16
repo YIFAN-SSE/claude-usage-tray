@@ -126,6 +126,19 @@ def _local_day(v):  # seconds or milliseconds since epoch -> local date
     return datetime.fromtimestamp(v / 1000 if v > 1e12 else v).date()
 
 
+def _open_ro(name):
+    live = os.path.join(CODEX_HOME, name)
+    try:  # reading the live file read-only is consistent even while Codex is running
+        con = sqlite3.connect(f"file:{live}?mode=ro", uri=True, timeout=3)
+        con.execute("select 1 from sqlite_master limit 1")
+        return con
+    except sqlite3.Error:  # fall back to a private copy of the db and its wal
+        for e in ("", "-wal", "-shm"):
+            if os.path.exists(live + e):
+                shutil.copy(live + e, os.path.join(_tmp, name + e))
+        return sqlite3.connect(f"file:{os.path.join(_tmp, name)}?mode=ro", uri=True, timeout=3)
+
+
 def codex_estimate():
     """Newer Codex versions migrate old session logs into sqlite and delete the .jsonl files, which keeps only
     a per-thread token total. For threads whose log is gone, spread that total over the days the thread had
@@ -137,12 +150,7 @@ def codex_estimate():
         return _est["rows"]
     rows, total = [], 0.0
     try:
-        for n in names:
-            for e in ("", "-wal", "-shm"):
-                if os.path.exists(os.path.join(CODEX_HOME, n + e)):
-                    shutil.copy(os.path.join(CODEX_HOME, n + e), os.path.join(_tmp, n + e))
-        st = sqlite3.connect(f"file:{_tmp}/state_5.sqlite?mode=ro", uri=True)
-        hist = sqlite3.connect(f"file:{_tmp}/thread_history_1.sqlite?mode=ro", uri=True)
+        st, hist = _open_ro(names[0]), _open_ro(names[1])
         for tid, path, used, upd, model in st.execute(
                 "select id, rollout_path, tokens_used, updated_at, model from threads where tokens_used > 0"):
             if path and os.path.exists(path):
@@ -161,7 +169,7 @@ def codex_estimate():
                 rows.append((day, tok, ((inp - cached) * i + cached * c + out * o) / 1e6))
                 total += tok
     except (sqlite3.Error, OSError, ValueError, TypeError):
-        rows, total = [], 0.0  # unreadable or a different layout: fall back to exact logs only
+        return _est["rows"]  # busy, mid-write or a layout we don't know: keep the last good result, retry next time
     _est.update(key=key, rows=rows, tokens=total)
     return rows
 
